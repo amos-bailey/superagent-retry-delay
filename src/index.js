@@ -12,15 +12,6 @@ module.exports = function (superagent) {
   return superagent;
 };
 
-const ERROR_CODES = [
-  "ECONNRESET",
-  "ETIMEDOUT",
-  "EADDRINFO",
-  "ESOCKETTIMEDOUT",
-  "ENOTFOUND",
-  "ECONNREFUSED",
-];
-
 /**
  * Works out whether we should retry, based on the number of retries, on any passed
  * errors and response and compared against a list of allowed error statuses.
@@ -30,6 +21,15 @@ const ERROR_CODES = [
  * @param allowedStatuses
  */
 function shouldRetry(err, res, allowedStatuses) {
+  const ERROR_CODES = [
+    "ECONNRESET",
+    "ETIMEDOUT",
+    "EADDRINFO",
+    "ESOCKETTIMEDOUT",
+    "ENOTFOUND",
+    "ECONNREFUSED",
+  ];
+
   if (err && err.code && ~ERROR_CODES.indexOf(err.code)) {
     return true;
   }
