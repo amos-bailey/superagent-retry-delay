@@ -52,6 +52,17 @@ describe("superagent-retry-delay", function () {
         });
     });
 
+    it("should not retry on success - custom handler format", function (done) {
+      agent
+        .get("http://localhost:" + port)
+        .retry(5, [17, 17, 17, 17, 17], () => false)
+        .end(function (err, res) {
+          res.text.should.eql("hello!");
+          requests.should.eql(1);
+          done(err);
+        });
+    });
+
     after(function (done) {
       server.close(done);
     });
@@ -97,6 +108,17 @@ describe("superagent-retry-delay", function () {
       agent
         .get("http://localhost:" + port)
         .retry(5, [13, 13, 13, 13, 13], [404])
+        .end(function (err, res) {
+          res.status.should.eql(404);
+          requests.should.eql(3);
+          done(err);
+        });
+    });
+
+    it("should not retry on handled errors - custom handler format", function (done) {
+      agent
+        .get("http://localhost:" + port)
+        .retry(5, [13, 13, 13, 13, 13], (_, res) => 404 !== res.status)
         .end(function (err, res) {
           res.status.should.eql(404);
           requests.should.eql(3);
@@ -162,6 +184,24 @@ describe("superagent-retry-delay", function () {
       agent
         .get("http://localhost:" + port)
         .retry(5, [17, 17, 17, 17, 17])
+        .end(function (err, res) {
+          res.text.should.eql("hello!");
+          done(err);
+        });
+    });
+
+    it("should retry on errors - custom handler format", function (done) {
+      agent.get("http://localhost:" + port).end(function (err, res) {
+        res.status.should.eql(503);
+
+        // appease eslint, do nothing with error to allow it to bubble up
+        if (err) {
+        }
+      });
+
+      agent
+        .get("http://localhost:" + port)
+        .retry(5, 17, (_, res) => res.status >= 400)
         .end(function (err, res) {
           res.text.should.eql("hello!");
           done(err);

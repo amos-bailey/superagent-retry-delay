@@ -12,6 +12,15 @@ module.exports = function (superagent) {
   return superagent;
 };
 
+const ERROR_CODES = [
+  "ECONNRESET",
+  "ETIMEDOUT",
+  "EADDRINFO",
+  "ESOCKETTIMEDOUT",
+  "ENOTFOUND",
+  "ECONNREFUSED",
+];
+
 /**
  * Works out whether we should retry, based on the number of retries, on any passed
  * errors and response and compared against a list of allowed error statuses.
@@ -21,15 +30,6 @@ module.exports = function (superagent) {
  * @param allowedStatuses
  */
 function shouldRetry(err, res, allowedStatuses) {
-  const ERROR_CODES = [
-    "ECONNRESET",
-    "ETIMEDOUT",
-    "EADDRINFO",
-    "ESOCKETTIMEDOUT",
-    "ENOTFOUND",
-    "ECONNREFUSED",
-  ];
-
   if (err && err.code && ~ERROR_CODES.indexOf(err.code)) {
     return true;
   }
@@ -71,7 +71,11 @@ function callback(err, res) {
   if (
     this._maxRetries &&
     this._retries++ < this._maxRetries &&
-    shouldRetry(err, res, this._allowedStatuses)
+    (
+      'function' === typeof this._allowedStatusesOrCustomHandler ? 
+        this._allowedStatusesOrCustomHandler(err, res) : 
+        shouldRetry(err, res, this._allowedStatusesOrCustomHandler)
+    )
   ) {
     let delay;
     if (!this._retries) {
@@ -102,12 +106,12 @@ function callback(err, res) {
  *
  * In milliseconds.
  *
- * @param {Number} retries
- * @param {Number[] || Number} delays
- * @param {Number[]} allowedStatuses
- * @return {retry}
+ * @param {Number} [retries=0]
+ * @param {Number[]|Number} [delays=[0]]
+ * @param {Number[]|function(object):boolean} [allowedStatusesOrCustomHandler=[]]
+ * @returns {Request} <code>this</code>
  */
-function retry(retries, delays, allowedStatuses) {
+function retry(retries, delays, allowedStatusesOrCustomHandler) {
   if (arguments.length === 0 || retries === true) {
     retries = 1;
   }
@@ -137,7 +141,7 @@ function retry(retries, delays, allowedStatuses) {
   this._maxRetries = retries;
   this._retries = 0;
   this._retryDelays = delays || [0];
-  this._allowedStatuses = allowedStatuses || [];
+  this._allowedStatusesOrCustomHandler = allowedStatusesOrCustomHandler || [];
 
   return this;
 }
